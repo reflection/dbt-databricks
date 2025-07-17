@@ -9,14 +9,16 @@
   {%- set comment = materialized_view.config["comment"].comment -%}
   {%- set refresh = materialized_view.config["refresh"] -%}
 
-  {%- set columns = get_column_schema_from_query(sql) -%}
-  {%- set model_columns = model.get('columns', {}) -%}
-  {%- set model_constraints = model.get('constraints', []) -%}
-  {%- set columns_and_constraints = adapter.parse_columns_and_constraints(columns, model_columns, model_constraints) -%}
-  {%- set target_relation = relation.enrich(columns_and_constraints[1]) -%}
-
-  create materialized view {{ target_relation.render() }}
-    {{ get_column_and_constraints_sql(target_relation, columns_and_constraints[0]) }}
+  create materialized view {{ relation.render() }}
+    {%- if config.persist_column_docs() -%}
+      {%- set model_columns = model.columns -%}
+      {%- set query_columns = get_columns_in_query(sql) -%}
+      {%- if query_columns %}
+    (
+      {{ get_persist_docs_column_list(model_columns, query_columns) }}
+    )
+      {%- endif -%}
+    {%- endif %}
     {{ get_create_sql_partition_by(partition_by) }}
     {{ get_create_sql_comment(comment) }}
     {{ get_create_sql_tblproperties(tblproperties) }}
